@@ -17,9 +17,9 @@ python worker.py  # Puerto 9001
 python worker.py  # Puerto 9002
 python worker.py  # Puerto 9003
 ```
-2. Luego ejecuta el maestro:
+2. Luego ejecuta el maestro (desde la raíz):
 ```
-python maestro.py
+python -m python.maestro.maestro
 ```
 
 ## Qué hace
