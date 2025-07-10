@@ -5,6 +5,9 @@ import math
 import numpy as np
 from DArrayDouble import DArrayDouble
 from DArrayInt import DArrayInt
+from worker_comm import enviar_a_worker
+from replicator import enviar_con_replicacion
+from utils import log_event
 
 WORKERS = [('localhost', 9001), ('localhost', 9002), ('localhost', 9003)]
 CHUNK_SIZE = 10000 // len(WORKERS)
@@ -69,20 +72,30 @@ def main():
     # Ejemplo usando partes_int:
     partes = partes_int
     # Ejemplo usando partes
-    #partes = partes  # para doubles
+    # partes = partes  # para doubles
+
+    # Ejemplo de replicación: cada chunk se envía a dos workers (principal y réplica)
+    # Suponiendo 3 workers, puedes hacer pares [(0,1), (1,2), (2,0)]
+    pares = [
+        [WORKERS[0], WORKERS[1]],
+        [WORKERS[1], WORKERS[2]],
+        [WORKERS[2], WORKERS[0]],
+    ]
 
     hilos = []
     resultados = [None] * len(WORKERS)
 
-    def worker_thread(i, addr, chunk):
-        try:
-            resultados[i] = enviar_a_worker(addr, chunk, 'math1')
-            print(f"[MAESTRO] Resultado parcial de {addr}: {resultados[i][:3]}")
-        except Exception as e:
-            print(f"[ERROR] Worker {addr} fallo: {e}")
+    def worker_thread(i, chunk, operacion='math1'):
+        log_event(f"Enviando chunk {i} a {pares[i][0]} (principal) y {pares[i][1]} (réplica)")
+        resultado = enviar_con_replicacion(pares[i], chunk, operacion)
+        resultados[i] = resultado
+        if resultado is not None:
+            log_event(f"Chunk {i} procesado correctamente.")
+        else:
+            log_event(f"Chunk {i} no pudo ser procesado ni por el principal ni por la réplica.")
 
-    for i, addr in enumerate(WORKERS):
-        t = threading.Thread(target=worker_thread, args=(i, addr, partes[i]))
+    for i in range(len(pares)):
+        t = threading.Thread(target=worker_thread, args=(i, partes[i]))
         hilos.append(t)
         t.start()
 
